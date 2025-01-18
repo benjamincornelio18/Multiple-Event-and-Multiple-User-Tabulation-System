@@ -1,0 +1,69 @@
+INSTALL COMPOSER
+INSTALL use Dompdf\Dompdf;
+composer require endroid/qr-code
+
+add on the admin username tabulator to reflect on the pdf
+
+php and xampp 8.1 hihger
+windows defener firewall
+advanced
+inbound rules
+check for tech IP 
+
+09604811070-smart 
+
+admin
+12345
+
+
+go to php folder> php.ini > remove the;extension=gd then save
+
+download composer
+
+Step 1: Install Composer (if you haven't already)
+Composer is a dependency manager for PHP. If you don't have Composer installed, you can install it by following these steps:
+
+Download Composer:
+
+bash
+Copy code
+php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"
+Install Composer:
+
+bash
+Copy code
+php composer-setup.php
+Move Composer to a global location (optional):
+
+bash
+Copy code
+sudo mv composer.phar /usr/local/bin/composer
+Now you should be able to use the composer command.
+
+Step 2: Install FPDF and FPDI with Composer
+Run the following commands in your project directory to install FPDF and FPDI:
+
+Install FPDF:
+
+bash
+Copy code
+composer require setasign/fpdf
+Install FPDI:
+
+bash
+Copy code
+composer require setasign/fpdi
+Install FPDI Protection (for adding encryption to the PDF):
+
+bash
+Copy code
+composer require setasign/fpdi-protection
+
+Alternatively, you can set an empty value for the http-proxy setting:
+
+bash
+Copy code disable proxy
+composer config --global --unset http-proxy
+composer config --global --unset https-proxy
+
+

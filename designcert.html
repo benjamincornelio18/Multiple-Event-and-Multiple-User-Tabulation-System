@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Custom A4 Canvas Editor</title>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- html2canvas CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@0.4.1/dist/html2canvas.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+        }
+        #canvasContainer {
+            position: relative;
+            width: 297mm;
+            height: 210mm;
+            border: 2px solid #000;
+            margin: 20px auto;
+            background-color: #f0f0f0;
+            overflow: hidden;
+        }
+        .text-element, .image-element {
+            position: absolute;
+            cursor: move;
+            border: 1px dashed #888;
+            user-select: none;
+        }
+        .text-element.selected, .image-element.selected {
+            border-color: green;
+        }
+        .resize-handle {
+            position: absolute;
+            width: 10px;
+            height: 10px;
+            background-color: blue;
+            bottom: 0;
+            right: 0;
+            cursor: se-resize;
+        }
+        #applyChangesBtn {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container py-4">
+        <h3 class="text-center mb-4">Custom A4 Canvas Editor</h3>
+
+        <div id="canvasContainer" class="mb-3"></div>
+
+        <!-- Upload background image -->
+        <div class="mb-3">
+            <label for="backgroundImageInput" class="form-label">Upload Background Image</label>
+            <input type="file" id="backgroundImageInput" class="form-control" accept="image/*">
+        </div>
+
+        <!-- Upload Image -->
+        <div class="mb-3">
+            <label for="addImageInput" class="form-label">Upload Image</label>
+            <input type="file" id="addImageInput" class="form-control" accept="image/*">
+        </div>
+
+        <!-- Text Options -->
+        <div class="mb-3">
+            <button class="btn btn-primary" onclick="addTextElement()">Add Text</button>
+            <button class="btn btn-danger" onclick="deleteSelectedElement()">Delete Selected Element</button>
+        </div>
+
+        <!-- Font Options -->
+        <div class="mb-3 row">
+            <div class="col">
+                <label for="fontVariant" class="form-label">Font Style</label>
+                <select id="fontVariant" class="form-select" onchange="showApplyChangesBtn()">
+                    <option value="normal">Normal</option>
+                    <option value="bold">Bold</option>
+                    <option value="italic">Italic</option>
+                </select>
+            </div>
+            <div class="col">
+                <label for="fontFamily" class="form-label">Font Family</label>
+                <select id="fontFamily" class="form-select" onchange="showApplyChangesBtn()">
+                    <option value="Arial">Arial</option>
+                    <option value="Times New Roman">Times New Roman</option>
+                    <option value="Verdana">Verdana</option>
+                    <option value="Courier New">Courier New</option>
+                </select>
+            </div>
+            <div class="col">
+                <label for="fontSize" class="form-label">Font Size</label>
+                <input type="number" id="fontSize" class="form-control" placeholder="Font Size" onchange="showApplyChangesBtn()">
+            </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="mb-3">
+            <button class="btn btn-warning" onclick="removeBackground()">Remove Background</button>
+            <button class="btn btn-secondary" onclick="resetCanvas()">Reset</button>
+            <button class="btn btn-info" onclick="exportCanvas()">Export as PNG</button>
+        </div>
+
+        <!-- Apply Changes button -->
+        <div class="text-center">
+            <button id="applyChangesBtn" class="btn btn-success" onclick="applyChanges()">Apply Changes</button>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let selectedElement = null;
+
+        // Clear canvas and reset all settings
+        function resetCanvas() {
+            // Clear background
+            document.getElementById('canvasContainer').style.backgroundImage = '';
+            // Clear all elements (text and images)
+            const elements = document.querySelectorAll('.text-element, .image-element');
+            elements.forEach(el => el.remove());
+            // Reset text options
+            document.getElementById('fontVariant').value = 'normal';
+            document.getElementById('fontFamily').value = 'Arial';
+            document.getElementById('fontSize').value = '';
+            // Hide the apply changes button
+            document.getElementById('applyChangesBtn').style.display = 'none';
+        }
+
+        document.getElementById('backgroundImageInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('canvasContainer').style.backgroundImage = `url(${e.target.result})`;
+                    document.getElementById('canvasContainer').style.backgroundSize = 'cover';
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        document.getElementById('addImageInput').addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imgElement = document.createElement('div');
+                    imgElement.className = 'image-element';
+                    imgElement.style.backgroundImage = `url(${e.target.result})`;
+                    imgElement.style.backgroundSize = 'contain';
+                    imgElement.style.backgroundRepeat = 'no-repeat';
+                    imgElement.style.width = '150px';
+                    imgElement.style.height = '150px';
+
+                    const resizeHandle = document.createElement('div');
+                    resizeHandle.className = 'resize-handle';
+                    imgElement.appendChild(resizeHandle);
+
+                    imgElement.onmousedown = function(e) {
+                        selectedElement = imgElement;
+                        setSelectedElementStyle();
+                        showApplyChangesBtn();
+                        dragElement(e, imgElement);
+                    };
+
+                    resizeHandle.onmousedown = function(e) {
+                        e.stopPropagation();
+                        resizeElement(e, imgElement);
+                    };
+
+                    document.getElementById('canvasContainer').appendChild(imgElement);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        function addTextElement() {
+            const textElement = document.createElement('div');
+            textElement.className = 'text-element';
+            textElement.contentEditable = true;
+            textElement.textContent = 'New Text';
+            textElement.style.fontFamily = 'Arial';
+            textElement.style.fontWeight = 'normal';
+            textElement.style.fontStyle = 'normal';
+            textElement.style.fontSize = '16px';
+
+            textElement.onmousedown = function(e) {
+                selectedElement = textElement;
+                setSelectedElementStyle();
+                showApplyChangesBtn();
+                dragElement(e, textElement);
+            };
+
+            document.getElementById('canvasContainer').appendChild(textElement);
+        }
+
+        function dragElement(e, element) {
+            let offsetX = e.clientX - element.offsetLeft;
+            let offsetY = e.clientY - element.offsetTop;
+
+            function onMouseMove(event) {
+                element.style.left = event.clientX - offsetX + 'px';
+                element.style.top = event.clientY - offsetY + 'px';
+            }
+
+            document.addEventListener('mousemove', onMouseMove);
+            document.addEventListener('mouseup', () => {
+                document.removeEventListener('mousemove', onMouseMove);
+            }, { once: true });
+        }
+
+        function resizeElement(e, element) {
+            const startX = e.clientX;
+            const startY = e.clientY;
+            const startWidth = parseInt(window.getComputedStyle(element).width, 10);
+            const startHeight = parseInt(window.getComputedStyle(element).height, 10);
+            document.addEventListener('mousemove', resizeMove);
+            document.addEventListener('mouseup', stopResize, { once: true });
+
+            function resizeMove(event) {
+                const newWidth = startWidth + (event.clientX - startX);
+                const newHeight = startHeight + (event.clientY - startY);
+                element.style.width = newWidth + 'px';
+                element.style.height = newHeight + 'px';
+            }
+
+            function stopResize() {
+                document.removeEventListener('mousemove', resizeMove);
+            }
+        }
+
+        function deleteSelectedElement() {
+            if (selectedElement) {
+                selectedElement.remove();
+                selectedElement = null;
+                hideApplyChangesBtn();
+            }
+        }
+
+        function setSelectedElementStyle() {
+            if (selectedElement) {
+                selectedElement.classList.add('selected');
+            }
+        }
+
+        function showApplyChangesBtn() {
+            document.getElementById('applyChangesBtn').style.display = 'inline-block';
+        }
+
+        function hideApplyChangesBtn() {
+            document.getElementById('applyChangesBtn').style.display = 'none';
+        }
+
+        function applyChanges() {
+            if (selectedElement && selectedElement.classList.contains('text-element')) {
+                const fontVariant = document.getElementById('fontVariant').value;
+                const fontFamily = document.getElementById('fontFamily').value;
+                const fontSize = document.getElementById('fontSize').value;
+
+                selectedElement.style.fontFamily = fontFamily;
+                selectedElement.style.fontWeight = fontVariant === 'bold' ? 'bold' : 'normal';
+                selectedElement.style.fontStyle = fontVariant === 'italic' ? 'italic' : 'normal';
+                selectedElement.style.fontSize = fontSize + 'px';
+            }
+        }
+
+        // Export canvas to PNG
+        function exportCanvas() {
+            html2canvas(document.getElementById('canvasContainer')).then(function(canvas) {
+                const link = document.createElement('a');
+                link.download = 'a4_canvas.png';
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            });
+        }
+
+        function removeBackground() {
+            document.getElementById('canvasContainer').style.backgroundImage = '';
+        }
+    </script>
+</body>
+</html>
